@@ -50,7 +50,7 @@ Instructions
 	
 ## Controls
 
-The motor board is largely controlled over the serial interface. There is one physical push button on the board that is a firmware reset button.
+The motor board is largely controlled over the serial interface. There is one physical push button on the board that puts the microprocessor into a mode in which new firmware can be installed.
 
 ## USB interface
 
