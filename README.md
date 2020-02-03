@@ -47,6 +47,61 @@ Instructions
 9. Load the firmware onto the motor board:
 
 	$ stm32flash -w mcv4.bin -v /dev/ttyUSB<X>
+	
+## Controls
+
+The motor board is largely controlled over the serial interface. There is one physical push button on the board that puts the microprocessor into a mode in which new firmware can be installed.
+
+## USB interface
+
+Unlike other SR v4 boards, the STM32 on the motor board does not directly communicate over USB. Instead there is an FTDI USB serial interface chip.
+
+The FTDI Chip has vendor ID `0403` and product ID `6001`. It can be further filtered by the USB `product` field.
+
+Given that the appropriate drivers are available on your computer, it should appear as a standard serial interface. You should open this interface at a baud rate of `1000000bps`.
+
+### Serial Commands
+
+
+8 bit commands should be sent over the serial interface to the board.
+
+The following commands are supported:
+
+| Decimal Value | Unicode| Purpose                         |
+|---------------|--------|---------------------------------|
+| 0             | `\x00` | Reset the STM32                 |
+| 1             | `\x01` | Get the firmware version string |
+| 2             | `\x02` | Set Motor 0 value               |
+| 3             | `\x03` | Set Motor 1 value               |
+| 4             | `\x04` | Reset into USB bootloader       |
+
+
+### Setting Motor Speeds
+
+The value of a motor can be set by sending the appropriate command, and then a second byte as follows:
+
+The argument byte is a standard 8-bit signed number, where a few values are reserved for the special cases of no-op, coast and brake.
+
+| Decimal Value | Purpose         |
+|---------------|-----------------|
+| 0             | No-op           |
+| 1             | Coast the motor |
+| 2             | Brake the motor |
+
+### Firmware String
+
+When the firmware string is requested from the motor board, you will receive bytes of the following format over the serial interface: `MCV4B:3\n`.
+
+The number after the colon represents the firmware version of the board.
+
+## udev Rule
+
+If you are connecting the Motor Board to a Linux computer with udev, the following rule can be added in order to access
+the Motor Board interface without root privileges:
+
+`SUBSYSTEM=="tty", DRIVERS=="ftdi_sio", ATTRS{interface}=="MCV4B", GROUP="plugdev", MODE="0666"`
+
+It should be noted that `plugdev` can be changed to any Unix group of your preference.
 
 [cygwin]:     http://cygwin.com/
 [toolchain]:  https://launchpad.net/gcc-arm-embedded
