@@ -1,6 +1,20 @@
+*~
 *.o
-*.elf
+*.d
 *.bin
+*.elf
+*.hex
+*.srec
+*.list
 *.map
-depend
+*.stylecheck
+generated.*.ld
+.gdb_history
+.DS_Store
+
+# Project files from idea/netbeans/eclipse
+nbproject/
+.idea/
+.project
+
 mcv4.conf
