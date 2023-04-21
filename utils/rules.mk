@@ -18,6 +18,8 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
+SERIAL_DEV	?= /dev/ttyUSB0
+
 LIBNAME		= opencm3_stm32f1
 DEFS		+= -DSTM32F1
 
@@ -51,13 +53,14 @@ OBJCOPY		:= $(PREFIX)objcopy
 OBJDUMP		:= $(PREFIX)objdump
 GDB		:= $(PREFIX)gdb
 STFLASH		= $(shell which st-flash)
-DFU_UTIL	= $(shell which dfu-util)
+STM32FLASH	= $(shell which stm32flash)
 STYLECHECK	:= /checkpatch.pl
 STYLECHECKFLAGS	:= --no-tree -f --terse --mailback
 STYLECHECKFILES	:= $(shell find . -name '*.[ch]')
 OPT		:= -Os
 DEBUG		:= -ggdb3
-CSTD		?= -std=c99
+# gnu99 needed to use inline asssembly
+CSTD		?= -std=gnu99
 
 ###############################################################################
 # Source files
@@ -172,23 +175,13 @@ ifeq (,$(wildcard $@))
 	$(MAKE) -C $(OPENCM3_DIR)
 endif
 
-# Default USB PID:VID
-ifeq ($(VID),)
-ifeq ($(PID),)
-VID	:=	1bda
-PID	:=	0010
-endif
-endif
-
 %.images: %.bin %.hex %.srec %.list %.map
 	@printf "*** $* images generated ***\n"
 
 %.bin: %.elf
 	@printf "  OBJCOPY $(*).bin\n"
 # pad binary out to full size of flash
-	$(Q)$(OBJCOPY) -Obinary --pad-to 0x08008000 $(*).elf $(*).bin
-# compute CRC32 of binary and inject into third word of bin
-	$(Q)$(SCRIPT_DIR)/crctool.py -w $(*).bin
+	$(Q)$(OBJCOPY) -Obinary $(*).elf $(*).bin
 
 %.hex: %.elf
 	@printf "  OBJCOPY $(*).hex\n"
@@ -262,7 +255,5 @@ else
 		   $(*).elf
 endif
 
-%.dfu:	%.bin
-	@printf "  DFU   $(*).bin\n"
-# dfu-util always returns an error
-	$(Q)$(DFU_UTIL) -E 1 -d $(VID):$(PID) -D $(*).bin || true
+%.stm32flash: %.bin
+	$(STM32FLASH) -b 115200 -w $(*).bin -v -R $(SERIAL_DEV)

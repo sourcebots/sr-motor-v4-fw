@@ -26,22 +26,8 @@ OBJS = analogue.o fw_ver.o led.o output.o usart.o
 
 LDSCRIPT = $(OPENCM3_DIR)/../utils/stm32-mcv4.ld
 
-# Default USB PID:VID
-ifeq ($(VID),)
-ifeq ($(PID),)
-VID	:=	1bda
-PID	:=	0010
-endif
-endif
-
-PYTHON ?= $(shell which python3)
-# Convert FW_VER to BCD
-FW_REV = $(shell echo $(FW_VER) | $(PYTHON) -c 'print("".join(f"{int(x):02x}" for x in input().split(".")[:2]))')
-
-DEFS = -DFW_VER=\"$(FW_VER)\" \
-	  -DSR_DEV_VID=0x$(VID) \
-	  -DSR_DEV_PID=0x$(PID) \
-	  -DSR_DEV_REV=0x$(FW_REV)
+DEFS = -DFW_VER=$(FW_VER)
+OOCD_FILE = ../utils/mcv4.cfg
 
 all: bin
 
@@ -56,6 +42,7 @@ GENERATED_BINARIES=$(BINARY).elf $(BINARY).bin $(BINARY).hex $(BINARY).srec $(BI
 
 images: $(BINARY).images
 flash: $(BINARY).flash
+prog: $(BINARY).stm32flash
 
 # Define a helper macro for debugging make errors online
 # you can type "make print-OPENCM3_DIR" and it will show you
