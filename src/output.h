@@ -1,7 +1,7 @@
 #ifndef __OUTPUT_H
 #define __OUTPUT_H
 
-#include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/gpio.h>
 
 typedef enum {
 	DIR_HALT,

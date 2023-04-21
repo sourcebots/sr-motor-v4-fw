@@ -1,7 +1,7 @@
 #ifndef __LED_H
 #define __LED_H
 
-#include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/gpio.h>
 
 #define LED_M0_R GPIO6
 #define LED_M0_B GPIO7

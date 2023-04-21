@@ -1,9 +1,9 @@
 #include "output.h"
 #include "error.h"
 
-#include <libopencm3/stm32/f1/rcc.h>
+#include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/timer.h>
-#include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/gpio.h>
 
 #define PWM_PORT GPIOA
 #define CTRL_PORT GPIOB

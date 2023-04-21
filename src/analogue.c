@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <math.h>
 
-#include <libopencm3/stm32/f1/adc.h>
-#include <libopencm3/stm32/f1/rcc.h>
-#include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/adc.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/dbgmcu.h>
@@ -47,7 +47,7 @@ void analogue_init(void) {
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_ADC1EN);
 	rcc_set_adcpre(RCC_CFGR_ADCPRE_PCLK2_DIV2);
 
-	adc_off(ADC1);
+	adc_power_off(ADC1);
 
 	adc_enable_external_trigger_injected(ADC1, ADC_CR2_JEXTSEL_TIM1_TRGO);
 	adc_enable_scan_mode(ADC1);
@@ -62,7 +62,7 @@ void analogue_init(void) {
 	for (int i=0; i<100000; i++)
 		__asm__("nop");
 	adc_reset_calibration(ADC1);
-	adc_calibration(ADC1);
+	adc_calibrate(ADC1);
 }
 
 void adc1_2_isr(void) {

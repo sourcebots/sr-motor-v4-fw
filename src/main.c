@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <libopencm3/stm32/f1/rcc.h>
-#include <libopencm3/stm32/f1/gpio.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/gpio.h>
 #include <libopencm3/cm3/scb.h>
 
 #include "led.h"
@@ -15,7 +15,7 @@ uint32_t *top_of_ram = ((uint32_t *)0x20001FF0);
 #define BOOTLOADER_MAGIC 0xFACEBEE5
 
 void init(void) {
-	rcc_clock_setup_in_hse_8mhz_out_24mhz();
+	rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_24MHZ]);
 
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPAEN);
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPBEN);
