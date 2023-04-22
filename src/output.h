@@ -3,11 +3,11 @@
 #include <libopencm3/stm32/gpio.h>
 
 typedef enum {
-	DIR_HALT,
-	DIR_FWD,
-	DIR_REV,
+    DIR_HALT,
+    DIR_FWD,
+    DIR_REV,
 
-	DIR_COUNT
+    DIR_COUNT
 } direction_t;
 
 int output_init(void);
