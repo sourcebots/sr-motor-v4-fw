@@ -1,6 +1,6 @@
-#ifndef __LED_H
-#define __LED_H
+#pragma once
 
+#include <stdint.h>
 #include <libopencm3/stm32/gpio.h>
 
 #define LED_M0_R GPIO6
@@ -10,8 +10,6 @@
 
 void led_init(void);
 
-#define led_set(led) gpio_set(GPIOC, led)
-#define led_clear(led) gpio_clear(GPIOC, led)
-#define led_toggle(led) gpio_toggle(GPIOC, led)
-
-#endif /* __LED_H */
+static inline void led_set(const uint16_t led) {gpio_set(GPIOC, led);}
+static inline void led_clear(const uint16_t led) {gpio_clear(GPIOC, led);}
+static inline void led_toggle(const uint16_t led) {gpio_toggle(GPIOC, led);}

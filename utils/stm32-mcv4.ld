@@ -42,8 +42,6 @@ SECTIONS
 		*(.vectors)	/* Vector table */
 		*(.text*)	/* Program code */
 		. = ALIGN(4);
-		*(.fwver)
-		. = ALIGN(4);
 		*(.rodata*)	/* Read-only data */
 		. = ALIGN(4);
 	} >rom

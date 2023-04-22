@@ -1,5 +1,4 @@
-#ifndef __OUTPUT_H
-#define __OUTPUT_H
+#pragma once
 
 #include <libopencm3/stm32/gpio.h>
 
@@ -19,5 +18,3 @@ int output_disable(int channel);
 int output_direction(int channel, direction_t direction);
 
 int output_speed(int channel, int speed);
-
-#endif /* __OUTPUT_H */

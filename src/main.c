@@ -9,12 +9,11 @@
 #include "output.h"
 #include "usart.h"
 #include "analogue.h"
-#include "fw_ver.h"
 
 uint32_t *top_of_ram = ((uint32_t *)0x20001FF0);
 #define BOOTLOADER_MAGIC 0xFACEBEE5
 
-void init(void) {
+static void init(void) {
 	rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_24MHZ]);
 
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_IOPAEN);
@@ -28,17 +27,17 @@ void init(void) {
 	led_set(LED_M0_R);
 }
 
-void print_version(void) {
-	printf("MCV4B:%i\n", firmware_version);
+static void print_version(void) {
+	printf("MCV4B:" FW_VER "\n");
 }
 
-void enter_bootloader(void) {
+static void enter_bootloader(void) {
 	printf("Entering bootloader\n");
 	*top_of_ram = BOOTLOADER_MAGIC;
 	scb_reset_system();
 }
 
-void set_output(int channel, int8_t i) {
+static void set_output(int channel, int8_t i) {
 	if (i == -127) {
 		output_disable(channel);
 	} else if (i == -126) {
@@ -61,7 +60,7 @@ typedef enum {
 	STATE_SPEED1
 } state_t;
 
-void fsm(int c) {
+static void fsm(int c) {
 	int8_t i = c - 128;
 
 	static state_t state = STATE_INIT;

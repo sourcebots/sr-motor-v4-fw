@@ -22,11 +22,11 @@ FW_VER ?= 4.4
 # Name of C file with main function
 BINARY = main
 # Name of all other C files to be compiled (with .o extension)
-OBJS = analogue.o fw_ver.o led.o output.o usart.o
+OBJS = analogue.o led.o output.o usart.o
 
 LDSCRIPT = $(OPENCM3_DIR)/../utils/stm32-mcv4.ld
 
-DEFS = -DFW_VER=$(FW_VER)
+DEFS = -DFW_VER=\"$(FW_VER)\"
 OOCD_FILE = ../utils/mcv4.cfg
 
 all: bin

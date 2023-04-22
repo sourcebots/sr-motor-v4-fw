@@ -7,6 +7,8 @@
 #include "libopencm3/cm3/nvic.h"
 #include "errno.h"
 
+int _write(int file, char *ptr, int len);
+
 void usart_init() {
 	rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_USART1EN);
 
