@@ -1,6 +1,8 @@
 #include "output.h"
 #include "error.h"
 
+#include <stdlib.h>
+
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/gpio.h>
@@ -138,4 +140,21 @@ int output_speed(int channel, int speed) {
         timer_set_oc_value(TIM2, TIM_OC1, speed*20);
     }
     return 0;
+}
+
+void set_output(int channel, int8_t i) {
+    if (i == -127) {
+        output_disable(channel);
+    } else if (i == -126) {
+        output_enable(channel);
+        output_direction(channel, DIR_HALT);
+    } else {
+        output_enable(channel);
+        if (i < 0) {
+            output_direction(channel, DIR_REV);
+        } else {
+            output_direction(channel, DIR_FWD);
+        }
+        output_speed(channel, abs(i));
+    }
 }

@@ -59,8 +59,7 @@ STYLECHECKFLAGS	:= --no-tree -f --terse --mailback
 STYLECHECKFILES	:= $(shell find . -name '*.[ch]')
 OPT		:= -Os
 DEBUG		:= -ggdb3
-# gnu99 needed to use inline asssembly
-CSTD		?= -std=gnu99
+CSTD		?= -std=c99
 
 ###############################################################################
 # Source files

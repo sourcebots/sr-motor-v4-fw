@@ -37,23 +37,6 @@ static void enter_bootloader(void) {
     scb_reset_system();
 }
 
-static void set_output(int channel, int8_t i) {
-    if (i == -127) {
-        output_disable(channel);
-    } else if (i == -126) {
-        output_enable(channel);
-        output_direction(channel, DIR_HALT);
-    } else {
-        output_enable(channel);
-        if (i < 0) {
-            output_direction(channel, DIR_REV);
-        } else {
-            output_direction(channel, DIR_FWD);
-        }
-        output_speed(channel, abs(i));
-    }
-}
-
 typedef enum {
     STATE_INIT,
     STATE_SPEED0,
@@ -111,10 +94,12 @@ int main(void) {
     /* Check to see if we should jump into the bootloader */
     if (*top_of_ram == BOOTLOADER_MAGIC) {
         *top_of_ram = 0;
-        asm("ldr r0, =0x1FFFF000\n\t" \
-            "ldr sp,[r0, #0]\n\t" \
-            "ldr r0,[r0, #4]\n\t" \
-            "bx r0");
+        __asm__ __volatile__(
+            "ldr r0, =0x1FFFF000;"  // load bootloader address into r0
+            "ldr sp,[r0, #0];"      // Load bootloader address into stack pointer
+            "ldr r0,[r0, #4];"      // Load bootloader start address into r0 (addr+4)
+            "bx r0;"                // Jump to address in r0
+        );
     }
 
     init();
