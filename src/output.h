@@ -1,20 +1,25 @@
 #pragma once
 
 #include <libopencm3/stm32/gpio.h>
+#include "led.h"
 
-typedef enum {
-    DIR_HALT,
-    DIR_FWD,
-    DIR_REV,
+#define MAX_MOTOR_VAL 127
+#define MIN_MOTOR_VAL (-MAX_MOTOR_VAL)
 
-    DIR_COUNT
-} direction_t;
+typedef struct {
+    bool enabled;
+    int8_t value;
+    bool in_fault;
+    uint16_t current;
+} output_t;
+// defined in output.c
+extern output_t output_data[];
 
-int output_init(void);
+void output_init(void);
 
-int output_enable(int channel);
-int output_disable(int channel);
-
-int output_direction(int channel, direction_t direction);
-
-int output_speed(int channel, int speed);
+void output_set_power(uint8_t output_num, int16_t output_val);
+bool output_enabled(uint8_t output_num);
+int8_t output_get_output(uint8_t output_num);
+void output_disable(uint8_t output_num);
+uint16_t output_get_current(uint8_t output_num);
+void outputs_reset(void);

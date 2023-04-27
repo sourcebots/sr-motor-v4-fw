@@ -1,5 +1,4 @@
 #include "output.h"
-#include "error.h"
 
 #include <stdlib.h>
 
@@ -7,154 +6,167 @@
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/gpio.h>
 
-#define PWM_PORT GPIOA
-#define CTRL_PORT GPIOB
+#define MOTOR_SPEED_COEFF 16
+#define NUM_OUTPUTS 2
 
-#define M0INa GPIO12
-#define M0INb GPIO13
-#define M0ENa GPIO14
-#define M0ENb GPIO15
-#define M1INa GPIO8
-#define M1INb GPIO9
-#define M1ENa GPIO10
-#define M1ENb GPIO11
-#define M0PWM GPIO_TIM2_CH2
-#define M1PWM GPIO_TIM2_CH1_ETR
+static const struct {
+    uint32_t INa;
+    uint32_t INb;
+    uint32_t ENa;
+    uint32_t ENb;
+    uint32_t PWM;
+    enum tim_oc_id timer_chan;
+} output_pins[] = {{
+    .INa = GPIO12,
+    .INb = GPIO13,
+    .ENa = GPIO14,
+    .ENb = GPIO15,
+    .PWM = GPIO_TIM2_CH2,
+    .timer_chan = TIM_OC2
+}, {
+    .INa = GPIO8,
+    .INb = GPIO9,
+    .ENa = GPIO10,
+    .ENb = GPIO11,
+    .PWM = GPIO_TIM2_CH1_ETR,
+    .timer_chan = TIM_OC1
+}};
 
-#define setup_ctrl_gpio(pin) \
-    gpio_set_mode(CTRL_PORT, GPIO_MODE_OUTPUT_2_MHZ, \
-                  GPIO_CNF_OUTPUT_PUSHPULL, pin)
+output_t output_data[NUM_OUTPUTS] = { 0 };
 
-#define setup_pwm_pin(pin) \
-    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, \
-                  GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, pin);
+static void setup_gpio(void) {
+    for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
+        // setup ctrl gpio
+        gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, output_pins[i].INa);
+        gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, output_pins[i].INb);
+        // Enable pins are pulled low by the H-bridge when in fault
+        gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_OPENDRAIN, output_pins[i].ENa);
+        gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_OPENDRAIN, output_pins[i].ENb);
+        output_disable(i);
 
-#define check_channel(ch) do { \
-        if (!(ch == 0 || ch == 1)) return ENOCH; \
-    } while(0)
-#define check_direction(dir) do { \
-        if (!(dir < DIR_COUNT)) return ENODIR; \
-    } while(0)
+        // setup pwm pins
+        gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, output_pins[i].PWM);
+    }
+}
 
-#define check_speed(speed) do { \
-        if (!(speed >= 0 && speed <= 4096)) return ENOSPEED; \
-    } while(0)
+void output_init(void) {
+    for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
+        output_data[i].enabled = false;
+        output_data[i].value = 0;
+        output_data[i].in_fault = false;
+        output_data[i].current = 0;
+    }
+    setup_gpio();
 
-int output_init(void) {
-    setup_ctrl_gpio(M0INa);
-    setup_ctrl_gpio(M0INb);
-    setup_ctrl_gpio(M0ENa);
-    setup_ctrl_gpio(M0ENb);
-    setup_ctrl_gpio(M1INa);
-    setup_ctrl_gpio(M1INb);
-    setup_ctrl_gpio(M1ENa);
-    setup_ctrl_gpio(M1ENb);
-
-    rcc_peripheral_enable_clock(&RCC_APB1ENR, RCC_APB1ENR_TIM2EN);
-    setup_pwm_pin(M0PWM);
-    setup_pwm_pin(M1PWM);
-
+    rcc_periph_clock_enable(RCC_TIM2);
+    // Run the timer at 24MHz
     timer_set_mode(TIM2, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-    timer_set_period(TIM2, 2000);
+    // Don't prescaler the timer clock, results in a ~12kHz PWM
     timer_set_prescaler(TIM2, 1);
+    // Configure period to match available motor value range
+    timer_set_period(TIM2, (MOTOR_SPEED_COEFF * (MAX_MOTOR_VAL - 1)));
 
-    timer_set_oc_mode(TIM2, TIM_OC1, TIM_OCM_PWM1);
-    timer_set_oc_mode(TIM2, TIM_OC2, TIM_OCM_PWM1);
-    timer_enable_oc_preload(TIM2, TIM_OC1);
-    timer_enable_oc_preload(TIM2, TIM_OC2);
+    for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
+        // Configure positive polarity output compare
+        timer_set_oc_mode(TIM2, output_pins[i].timer_chan, TIM_OCM_PWM1);
+        timer_set_oc_polarity_high(TIM2, output_pins[i].timer_chan);
 
-    timer_set_oc_polarity_high(TIM2, TIM_OC1);
-    timer_set_oc_polarity_high(TIM2, TIM_OC2);
-    timer_enable_oc_output(TIM2, TIM_OC1);
-    timer_enable_oc_output(TIM2, TIM_OC2);
-
-    output_speed(0, 0);
-    output_speed(1, 0);
+        // Enable output compare outputs to physical pins
+        timer_enable_oc_preload(TIM2, output_pins[i].timer_chan);
+        timer_enable_oc_output(TIM2, output_pins[i].timer_chan);
+    }
 
     timer_enable_preload(TIM2);
     timer_enable_counter(TIM2);
-    return 0;
 }
 
-int output_enable(int channel) {
-    check_channel(channel);
-    if (channel == 0) {
-        gpio_set(CTRL_PORT, M0ENa);
-        gpio_set(CTRL_PORT, M0ENb);
-    } else {
-        gpio_set(CTRL_PORT, M1ENa);
-        gpio_set(CTRL_PORT, M1ENb);
+void output_set_power(uint8_t output_num, int16_t output_val) {
+    if (!(output_num < NUM_OUTPUTS)) {
+        // skip invalid output numbers
+        return;
     }
-    return 0;
-}
-
-int output_disable(int channel) {
-    check_channel(channel);
-    if (channel == 0) {
-        gpio_clear(CTRL_PORT, M0ENa);
-        gpio_clear(CTRL_PORT, M0ENb);
-    } else {
-        gpio_clear(CTRL_PORT, M1ENa);
-        gpio_clear(CTRL_PORT, M1ENb);
+    if (output_val < MIN_MOTOR_VAL || output_val > MAX_MOTOR_VAL) {
+        // skip invalid output values
+        return;
     }
-    return 0;
-}
 
-int output_direction(int channel, direction_t direction) {
-    check_channel(channel);
-    check_direction(direction);
-    if (direction == DIR_HALT) {
-        if (channel == 0) {
-            gpio_clear(CTRL_PORT, M0INa);
-            gpio_clear(CTRL_PORT, M0INb);
-        } else {
-            gpio_clear(CTRL_PORT, M1INa);
-            gpio_clear(CTRL_PORT, M1INb);
-        }
-    } else if (direction == DIR_FWD) {
-        if (channel == 0) {
-            gpio_set(CTRL_PORT, M0INa);
-            gpio_clear(CTRL_PORT, M0INb);
-        } else {
-            gpio_set(CTRL_PORT, M1INa);
-            gpio_clear(CTRL_PORT, M1INb);
-        }
-    } else if (direction == DIR_REV) {
-        if (channel == 0) {
-            gpio_clear(CTRL_PORT, M0INa);
-            gpio_set(CTRL_PORT, M0INb);
-        } else {
-            gpio_clear(CTRL_PORT, M1INa);
-            gpio_set(CTRL_PORT, M1INb);
-        }
+    (void)output_val;
+    if (!output_data[output_num].enabled) {
+        // enable output if it wasn't previously
+        gpio_set(GPIOB, output_pins[output_num].ENa);
+        gpio_set(GPIOB, output_pins[output_num].ENb);
+
+        output_data[output_num].enabled = true;
     }
-    return 0;
-}
 
-int output_speed(int channel, int speed) {
-    check_channel(channel);
-    check_speed(speed);
-    if (channel == 0) {
-        timer_set_oc_value(TIM2, TIM_OC2, speed*20);
-    } else {
-        timer_set_oc_value(TIM2, TIM_OC1, speed*20);
+    // set direction
+    if (output_val > 0) {  // forward
+        gpio_set(GPIOB, output_pins[output_num].INa);
+        gpio_clear(GPIOB, output_pins[output_num].INb);
+
+        // set speed
+        timer_set_oc_value(TIM2, output_pins[output_num].timer_chan, output_val * MOTOR_SPEED_COEFF);
+    } else if (output_val < 0) {  // reverse
+        gpio_clear(GPIOB, output_pins[output_num].INa);
+        gpio_set(GPIOB, output_pins[output_num].INb);
+
+        // set speed
+        timer_set_oc_value(TIM2, output_pins[output_num].timer_chan, -output_val * MOTOR_SPEED_COEFF);
+    } else if (output_val == 0) {  // brake
+        gpio_clear(GPIOB, output_pins[output_num].INa);
+        gpio_clear(GPIOB, output_pins[output_num].INb);
     }
-    return 0;
+
+    // store set speed
+    output_data[output_num].value = output_val;
 }
 
-void set_output(int channel, int8_t i) {
-    if (i == -127) {
-        output_disable(channel);
-    } else if (i == -126) {
-        output_enable(channel);
-        output_direction(channel, DIR_HALT);
+bool output_enabled(uint8_t output_num) {
+    if (!(output_num < NUM_OUTPUTS)) {
+        // skip invalid output numbers
+        return false;
+    }
+
+    return output_data[output_num].enabled;
+}
+
+int8_t output_get_output(uint8_t output_num) {
+    if (!(output_num < NUM_OUTPUTS)) {
+        // skip invalid output numbers
+        return 0;
+    }
+
+    if (output_data[output_num].enabled) {
+        return output_data[output_num].value;
     } else {
-        output_enable(channel);
-        if (i < 0) {
-            output_direction(channel, DIR_REV);
-        } else {
-            output_direction(channel, DIR_FWD);
-        }
-        output_speed(channel, abs(i));
+        return 0;
+    }
+}
+
+void output_disable(uint8_t output_num) {
+    if (!(output_num < NUM_OUTPUTS)) {
+        // skip invalid output numbers
+        return;
+    }
+
+    output_data[output_num].enabled = false;
+
+    gpio_clear(GPIOB, output_pins[output_num].ENa);
+    gpio_clear(GPIOB, output_pins[output_num].ENb);
+}
+
+uint16_t output_get_current(uint8_t output_num) {
+    if (!(output_num < NUM_OUTPUTS)) {
+        // skip invalid output numbers
+        return 0;
+    }
+
+    return output_data[output_num].current;
+}
+
+void outputs_reset(void) {
+    for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
+        output_disable(i);
+        output_data[i].current = 0;
     }
 }

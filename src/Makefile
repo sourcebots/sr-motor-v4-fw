@@ -22,7 +22,7 @@ FW_VER ?= 4.4
 # Name of C file with main function
 BINARY = main
 # Name of all other C files to be compiled (with .o extension)
-OBJS = analogue.o led.o output.o usart.o
+OBJS = analogue.o led.o output.o usart.o msg_handler.o
 
 LDSCRIPT = $(OPENCM3_DIR)/../utils/stm32-mcv4.ld
 

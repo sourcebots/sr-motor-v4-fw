@@ -1,21 +1,18 @@
 #include "usart.h"
-#include "output.h"
 
+#include <stdint.h>
+#include <string.h>
 #include "libopencm3/stm32/rcc.h"
 #include "libopencm3/stm32/gpio.h"
 #include "libopencm3/stm32/usart.h"
-#include "libopencm3/cm3/nvic.h"
-#include "errno.h"
 
-int _write(int file, char *ptr, int len);
-
-void usart_init() {
+void usart_init(void) {
     rcc_peripheral_enable_clock(&RCC_APB2ENR, RCC_APB2ENR_USART1EN);
 
-    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ, \
+    gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_10_MHZ,
                   GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
 
-    usart_set_baudrate(USART1, 1000000);
+    usart_set_baudrate(USART1, 115200);
     usart_set_databits(USART1, 8);
     usart_set_stopbits(USART1, USART_STOPBITS_1);
     usart_set_parity(USART1, USART_PARITY_NONE);
@@ -25,19 +22,20 @@ void usart_init() {
     usart_enable(USART1);
 }
 
-int usart_get_char(void) {
+uint16_t usart_get_char(void) {
     return usart_recv_blocking(USART1);
 }
 
-int _write(int file, char *ptr, int len) {
-    int i;
+int usart_send_string(char* str) {
+    uint16_t len = strlen(str);
 
-    if (file == 1) {
-        for (i=0; i<len; i++)
-            usart_send_blocking(USART1, ptr[i]);
-        return i;
+    for (uint16_t i=0; i<len; i++) {
+        if (str[i] == '\0') {
+            usart_send_blocking(USART1, '\n');
+        } else {
+            usart_send_blocking(USART1, str[i]);
+        }
     }
 
-    errno = EIO;
-    return -1;
+    return len;
 }
