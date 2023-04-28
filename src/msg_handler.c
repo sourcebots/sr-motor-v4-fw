@@ -112,7 +112,7 @@ void handle_msg(char* buf, char* response, int max_len) {
             append_str(response, "ACK", max_len);
             return;
         } else if (strcmp(next_arg, "I?") == 0) {
-            append_str(response, itoa(output_get_current((uint8_t)output_num), temp_str), max_len);  // TODO
+            append_str(response, itoa(output_get_current((uint8_t)output_num), temp_str), max_len);
             return;
         } else {
             append_str(response, "NACK:Unknown motor command", max_len);
@@ -125,7 +125,11 @@ void handle_msg(char* buf, char* response, int max_len) {
         append_str(response, ":" FW_VER, max_len);
         return;
     } else if (strcmp(next_arg, "*STATUS?") == 0) {
-        append_str(response, "ACK", max_len);
+        append_str(response, (output_data[0].in_fault)?"1":"0", max_len);
+        append_str(response, ",", max_len);
+        append_str(response, (output_data[1].in_fault)?"1":"0", max_len);
+        append_str(response, ":", max_len);
+        append_str(response, itoa(input_voltage, temp_str), max_len);
         return;
     } else if (strcmp(next_arg, "*RESET") == 0) {
         outputs_reset();

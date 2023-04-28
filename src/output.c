@@ -1,4 +1,5 @@
 #include "output.h"
+#include "led.h"
 
 #include <stdlib.h>
 
@@ -6,8 +7,7 @@
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/gpio.h>
 
-#define MOTOR_SPEED_COEFF 16
-#define NUM_OUTPUTS 2
+#define MOTOR_SPEED_COEFF 2
 
 static const struct {
     uint32_t INa;
@@ -164,9 +164,37 @@ uint16_t output_get_current(uint8_t output_num) {
     return output_data[output_num].current;
 }
 
+void check_output_faults(void) {
+    for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
+        if (output_data[i].enabled) {
+            // The h-bridge drives the enable pin low when a fault occurs
+            if (
+                (!gpio_get(GPIOB, output_pins[i].ENa))
+                || (!gpio_get(GPIOB, output_pins[i].ENb))
+            ) {
+                // A fault has occured on the output
+                output_data[i].in_fault = true;
+                led_set((i == 0)?(LED_M0_R):(LED_M1_R));
+            } else {
+                output_data[i].in_fault = false;
+                led_clear((i == 0)?(LED_M0_R):(LED_M1_R));
+            }
+        } else {
+            output_data[i].in_fault = false;
+            led_clear((i == 0)?(LED_M0_R):(LED_M1_R));
+        }
+    }
+}
+
 void outputs_reset(void) {
     for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
         output_disable(i);
+        output_data[i].in_fault = false;
         output_data[i].current = 0;
     }
+
+    led_clear(LED_M0_R);
+    led_clear(LED_M0_B);
+    led_clear(LED_M1_R);
+    led_clear(LED_M1_B);
 }

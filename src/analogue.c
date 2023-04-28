@@ -14,6 +14,8 @@
 #include <libopencm3/stm32/timer.h>
 #include <libopencm3/stm32/dbgmcu.h>
 
+uint16_t input_voltage = 0;
+
 static void init_adc_timer(void) {
     rcc_periph_clock_enable(RCC_TIM1);
 
@@ -89,11 +91,36 @@ void analogue_init(void) {
     timer_enable_counter(TIM1);
 }
 
+static uint16_t convert_to_ma(uint16_t current_raw) {
+    // voltage_mv = code * vref/4096
+    // current_ma = (voltage_mv/rshunt) * Igain
+
+    // current_ma = code * 3300/(4096 * 1100) * 7000
+    return (uint16_t)((((uint32_t)current_raw * 2625) >> 9) & 0xffff);
+}
+
+static uint16_t convert_to_mv(uint16_t voltage_raw) {
+    // meas_voltage_mv = code * vref/4096
+    // voltage_mv = meas_voltage_mv * (R1 + R2)/(R2)
+
+    // voltage_mv = (code * 3300/4096) * 5400/1100
+    return (uint16_t)((((uint32_t)voltage_raw * 2025) >> 9) & 0xffff);
+}
+
 void adc1_2_isr(void) {
     ADC1_SR = 0;
-    led_toggle(LED_M0_R);
+    check_output_faults();
 
-    // adc_read_injected(ADC1, 0);  // 12V
-    output_data[0].current = (uint16_t)(adc_read_injected(ADC1, 1) & 0xff);  // M0 CS
-    output_data[1].current = (uint16_t)(adc_read_injected(ADC1, 2) & 0xff);  // M1 CS
+    input_voltage = convert_to_mv(adc_read_injected(ADC1, 0));  // 12V
+    output_data[0].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 1) & 0xff));  // M0 CS
+    output_data[1].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 2) & 0xff));  // M1 CS
+
+    // Light blue LEDs when the outputs are drawing more than 5 amps
+    for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
+        if (output_data[i].current > 5000) {
+            led_set((i == 0)?(LED_M0_B):(LED_M1_B));;
+        } else {
+            led_clear((i == 0)?(LED_M0_B):(LED_M1_B));;
+        }
+    }
 }

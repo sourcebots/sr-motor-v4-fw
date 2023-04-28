@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <libopencm3/stm32/iwdg.h>
 #include "libopencm3/stm32/rcc.h"
 #include "libopencm3/stm32/gpio.h"
 #include "libopencm3/stm32/usart.h"
@@ -30,6 +31,7 @@ int usart_send_string(char* str) {
     uint16_t len = strlen(str);
 
     for (uint16_t i=0; i<len; i++) {
+        iwdg_reset();
         if (str[i] == '\0') {
             usart_send_blocking(USART1, '\n');
         } else {

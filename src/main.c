@@ -3,6 +3,7 @@
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/iwdg.h>
 #include <libopencm3/cm3/scb.h>
 
 #include "led.h"
@@ -23,7 +24,9 @@ static void init(void) {
     usart_init();
     analogue_init();
 
-    led_set(LED_M0_R);
+    // Configure watchdog. Period: 50ms
+    iwdg_set_period_ms(50);
+    iwdg_start();
 }
 
 static void enter_bootloader(void) {
@@ -45,7 +48,7 @@ int main(void) {
     init();
 
     while (1) {
-        // handle_msg(char* buf, char* response, int max_len);
+        iwdg_reset();
         uint16_t c = usart_get_char();
         if (c & 0x100) {  // skip parity errors
             continue;
