@@ -51,7 +51,7 @@ static void init_adc(void) {
 
     // Extend the conversion times to reduce noise impact
     adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_28DOT5CYC);
-	adc_set_right_aligned(ADC1);
+    adc_set_right_aligned(ADC1);
 
     // Enable an interrupt after each scan run
     nvic_enable_irq(NVIC_ADC1_2_IRQ);
