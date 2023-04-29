@@ -118,9 +118,9 @@ void adc1_2_isr(void) {
     // Light blue LEDs when the outputs are drawing more than 5 amps
     for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
         if (output_data[i].current > 5000) {
-            led_set((i == 0)?(LED_M0_B):(LED_M1_B));;
+            led_set((i == 0)?(LED_M0_B):(LED_M1_B));
         } else {
-            led_clear((i == 0)?(LED_M0_B):(LED_M1_B));;
+            led_clear((i == 0)?(LED_M0_B):(LED_M1_B));
         }
     }
 }

@@ -13,7 +13,6 @@
 #define MSG_MAXLEN 64
 #define USB_BUFFER_SIZE 64
 
-uint32_t* top_of_ram = ((uint32_t *)0x20001FF0);
 const char serialnum[] = "XXXXXXXXXXXXXXX";
 char msg_buffer[MSG_MAXLEN];
 int current_msg_len = 0;
@@ -221,5 +220,5 @@ static char* itoa(int value, char* string) {
 void enter_bootloader_next_cycle(void) {
     // Set the signature to enter bootloader at next reset
     // the main loop will trigger a reset at the end of this transaction
-    *top_of_ram = BOOTLOADER_MAGIC;
+    set_bootloader_signature(BOOTLOADER_SIGNATURE);
 }
