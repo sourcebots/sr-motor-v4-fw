@@ -64,7 +64,7 @@ void output_init(void) {
     // Don't prescaler the timer clock, results in a ~12kHz PWM
     timer_set_prescaler(TIM2, 1);
     // Configure period to match available motor value range
-    timer_set_period(TIM2, (MOTOR_SPEED_COEFF * (MAX_MOTOR_VAL - 1)));
+    timer_set_period(TIM2, (MOTOR_SPEED_COEFF * MAX_MOTOR_VAL));
 
     for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
         // Configure positive polarity output compare

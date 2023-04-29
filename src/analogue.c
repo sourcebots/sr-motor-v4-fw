@@ -111,9 +111,9 @@ void adc1_2_isr(void) {
     ADC1_SR = 0;
     check_output_faults();
 
-    input_voltage = convert_to_mv(adc_read_injected(ADC1, 0));  // 12V
-    output_data[0].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 1) & 0xff));  // M0 CS
-    output_data[1].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 2) & 0xff));  // M1 CS
+    input_voltage = convert_to_mv(adc_read_injected(ADC1, 1));  // 12V
+    output_data[0].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 2) & 0xff));  // M0 CS
+    output_data[1].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 3) & 0xff));  // M1 CS
 
     // Light blue LEDs when the outputs are drawing more than 5 amps
     for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {

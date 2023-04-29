@@ -38,8 +38,15 @@ void process_received_data(char new_data) {
 
         char response_buffer[USB_BUFFER_SIZE];
 
-        handle_msg(msg_buffer, response_buffer, (USB_BUFFER_SIZE - 1));
+        handle_msg(msg_buffer, response_buffer, (USB_BUFFER_SIZE - 2));
+        current_msg_len = 0;
+
+        uint16_t resp_len = strlen(response_buffer);
+        response_buffer[resp_len++] = '\n';
+        response_buffer[resp_len] = '\0';
         usart_send_string(response_buffer);
+    } else if (new_data == '\r') {
+        // Drop carriage returns
     } else {
         msg_buffer[current_msg_len] = new_data;
         current_msg_len++;
@@ -82,7 +89,7 @@ void handle_msg(char* buf, char* response, int max_len) {
         if (strcmp(next_arg, "SET") == 0) {
             next_arg = get_next_arg(response, "NACK:Missing motor power", max_len);
             if(next_arg == NULL) {return;}
-            if (!isdigit((int)next_arg[0])) {
+            if (!(isdigit((int)next_arg[0]) || (next_arg[0] == '-'))) {
                 append_str(response, "NACK:Invalid motor power", max_len);
                 return;
             }
@@ -144,7 +151,7 @@ void handle_msg(char* buf, char* response, int max_len) {
             // enter bootloader after sending ack
             enter_bootloader_next_cycle();
 
-            append_str(response, "ACK", max_len);
+            append_str(response, "ACK\n\n", max_len);
             return;
         }
 
