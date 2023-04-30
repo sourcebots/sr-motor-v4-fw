@@ -29,7 +29,7 @@ static void init(void) {
 
     // Configure watchdog. Period: 50ms
     iwdg_set_period_ms(50);
-    // iwdg_start();
+    iwdg_start();
 }
 
 static void enter_bootloader(void) {

@@ -24,7 +24,9 @@ void usart_init(void) {
 }
 
 uint16_t usart_get_char(void) {
-    return usart_recv_blocking(USART1);
+    // Wait until the data is ready to be received.
+    while ((USART_SR(USART1) & USART_SR_RXNE) == 0)iwdg_reset();
+    return usart_recv(USART1);
 }
 
 int usart_send_string(char* str) {
