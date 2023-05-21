@@ -66,3 +66,10 @@ the Motor Board interface without root privileges:
 `SUBSYSTEM=="tty", DRIVERS=="ftdi_sio", ATTRS{interface}=="MCV4B", GROUP="plugdev", MODE="0666"`
 
 It should be noted that `plugdev` can be changed to any Unix group of your preference.
+
+## Designs
+
+You can access the schematics and source code of the hardware in the following places.
+-   [Full Schematics](https://studentrobotics.org/docs/resources/kit/motor-schematic.pdf)
+-   [Competitor Facing Docs](https://studentrobotics.org/docs/kit/motor_board)
+-   [Hardware designs](https://github.com/srobo/motor-v4-hw)

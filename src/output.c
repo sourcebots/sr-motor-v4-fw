@@ -90,7 +90,6 @@ void output_set_power(uint8_t output_num, int16_t output_val) {
         return;
     }
 
-    (void)output_val;
     if (!output_data[output_num].enabled) {
         // enable output if it wasn't previously
         gpio_set(GPIOB, output_pins[output_num].ENa);
