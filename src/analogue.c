@@ -20,9 +20,9 @@ static void init_adc_timer(void) {
     rcc_periph_clock_enable(RCC_TIM1);
 
     timer_set_mode(TIM1, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-    // 24MHz/12kHz = 2kHz timer clock. /20 gives 100Hz sampling frequency
-    timer_set_period(TIM1, 12000);
-    timer_set_prescaler(TIM1, 20);
+    // 24MHz/1k = 24kHz timer clock. /1 gives 24kHz sampling frequency
+    timer_set_period(TIM1, 1000);
+    timer_set_prescaler(TIM1, 1);
 
     // Configure OC1 to generate an event on match
     timer_set_oc_mode(TIM1, TIM_OC1, TIM_OCM_PWM1);
@@ -50,7 +50,7 @@ static void init_adc(void) {
     adc_power_off(ADC1);
 
     // Extend the conversion times to reduce noise impact
-    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_28DOT5CYC);
+    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPR_SMP_239DOT5CYC);
     adc_set_right_aligned(ADC1);
 
     // Enable an interrupt after each scan run
@@ -107,13 +107,24 @@ static uint16_t convert_to_mv(uint16_t voltage_raw) {
     return (uint16_t)((((uint32_t)voltage_raw * 2025) >> 9) & 0xffff);
 }
 
+static uint16_t decay_filter(uint16_t in_sample, uint16_t prev_out_sample) {
+    // Low-pass single-pole IIR filter, decay=0.972
+    // y(n) = b1*x[n] + a0*y[n-1], a0 = decay, b1 = (1 - a0)
+    int32_t decay = 256 - 249;  // 1 - 0.972 shifted 8 left
+    int32_t intermediary = ((int32_t)in_sample - (int32_t)prev_out_sample);
+    return (uint16_t)(prev_out_sample + ((decay * intermediary) >> 8));
+}
+
 void adc1_2_isr(void) {
     ADC1_SR = 0;
     check_output_faults();
 
     input_voltage = convert_to_mv(adc_read_injected(ADC1, 1));  // 12V
-    output_data[0].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 2) & 0xff));  // M0 CS
-    output_data[1].current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 3) & 0xff));  // M1 CS
+    uint16_t m0_current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 2) & 0xffff));  // M0 CS
+    uint16_t m1_current = convert_to_ma((uint16_t)(adc_read_injected(ADC1, 3) & 0xffff));  // M1 CS
+
+    output_data[0].current = decay_filter(m0_current, output_data[0].current);
+    output_data[1].current = decay_filter(m1_current, output_data[1].current);
 
     // Light blue LEDs when the outputs are drawing more than 5 amps
     for (uint8_t i = 0; i < NUM_OUTPUTS; i++) {
