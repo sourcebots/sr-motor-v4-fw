@@ -33,6 +33,12 @@ With the pyserial library, the serial port can be identified using the `pyserial
 
 The motor board is largely controlled over the serial interface. There is one physical push button on the board that puts the microprocessor into a mode in which new firmware can be installed.
 
+### LEDs
+
+There are 4 LEDs controlled by the MCU, 2 blue and 2 red located around the input choke.
+The blue LED is lit when the respective channel is drawing over 5 amps.
+The red LED is lit when the respective H-bridge has reported a fault.
+
 ## USB interface
 
 Unlike other SR v4 boards, the STM32 on the motor board does not directly communicate over USB. Instead there is an FTDI USB serial interface chip.
