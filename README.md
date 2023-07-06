@@ -1,56 +1,42 @@
 Motor Board v4 Firmware
 =======================
 
-Prerequisites
--------------
+## Instructions
 
-These instructions assume that you are using a version of Linux, but should also work on BSD-derived OSes (including OS X). Windows users may wish to try [Cygwin][cygwin], create a Linux VM (although flashing the board from a VM may require some thought), or consider their life choices.
+Using a posix system, you require `make`, the `arm-none-eabi` toolchain and `git`.
+Before attempting to build anything initialise all the submodules.
+```shell
+$ git submodule update --init --recursive
+```
 
-* `git` can be found in your distribution's repositories, or [online][git].
-* A working C compiler, such as `gcc` or `clang`, also from your distribution's repositories.
-* `make`, also from your distribution's repositories.
-* The `arm-none-eabi` toolchain. This may be in your distribution's repositories, otherwise download it [from Launchpad][toolchain] and follow the instructions in the README.
-* `stm32flash`, which can be found [on Google Code][stm32flash]. After downloading, build and install it:
+To build the main binary, run:
+```shell
+$ make
+```
+The binary will then be at `src/main.bin`.
+This will also build the library libopencm3 the first time you run it.
 
-	$ make
-	$ sudo make install
+This can be flashed to an attached motor board that is in bootloader using:
+```shell
+$ make -C src prog
+```
+To use the `prog` command you need to install stm32flash. This is a cross-platform utility that may be in your operating system's package manager, otherwise it can be downloaded from [their website](https://sourceforge.net/p/stm32flash/wiki/Home/).
 
-Instructions
-------------
+To enter the bootloader the pushbutton on the board can be pressed with the 12V input connected. Whilst 12V power is present the board will remain in bootloader.
 
-1. From a shell, `cd` into the directory where you cloned the repository and download the `libopencm3` submodule:
+### Finding the board
 
-	$ git submodule update --init
+With the pyserial library, the serial port can be identified using the `pyserial-ports --verbose` command.
 
-2. Determine your `arm-none-eabi` toolchain prefix, unless it is in your `$PATH`. If you downloaded it from the link above, it will be the path to the `bin` directory of the extracted folder, followed by `arm-none-eabi`.
-
-3. Build `libopencm3`:
-
-	$ cd libopencm3
-	$ make PREFIX=<your toolchain prefix>
-
-4. Change back to the project directory and build the firmware:
-
-	$ cd ..
-	$ make PREFIX=<your toolchain prefix>
-
-5. Connect the motor board to your machine via USB. The USB Power Light (green, next to the connector) should turn on.
-
-6. Connect the motor board to a power source. The main power light (green, in the middle of the board) should turn on. If using the SR power board, you will have to run a program to turn on the motor rail.
-
-7. Press the firmware button on the side of the motor board with a long thin object.
-
-8. To test connectivity, run the following command, where X is found by running `ls /dev/ttyUSB*`:
-
-	$ stm32flash /dev/ttyUSB<X>
-
-9. Load the firmware onto the motor board:
-
-	$ stm32flash -w mcv4.bin -v /dev/ttyUSB<X>
-	
 ## Controls
 
 The motor board is largely controlled over the serial interface. There is one physical push button on the board that puts the microprocessor into a mode in which new firmware can be installed.
+
+### LEDs
+
+There are 4 LEDs controlled by the MCU, 2 blue and 2 red located around the input choke.
+The blue LED is lit when the respective channel is drawing over 5 amps.
+The red LED is lit when the respective H-bridge has reported a fault.
 
 ## USB interface
 
@@ -58,43 +44,26 @@ Unlike other SR v4 boards, the STM32 on the motor board does not directly commun
 
 The FTDI Chip has vendor ID `0403` and product ID `6001`. It can be further filtered by the USB `product` field.
 
-Given that the appropriate drivers are available on your computer, it should appear as a standard serial interface. You should open this interface at a baud rate of `1000000bps`.
+Given that the appropriate drivers are available on your computer, it should appear as a standard serial interface. You should open this interface at a baud rate of `115200bps`.
 
 ### Serial Commands
 
+Commands can be sent to the board via the serial or USB serial interface. Each command is its own line and is terminated with a new line.
 
-8 bit commands should be sent over the serial interface to the board.
-
-The following commands are supported:
-
-| Decimal Value | Unicode| Purpose                         |
-|---------------|--------|---------------------------------|
-| 0             | `\x00` | Reset the STM32                 |
-| 1             | `\x01` | Get the firmware version string |
-| 2             | `\x02` | Set Motor 0 value               |
-| 3             | `\x03` | Set Motor 1 value               |
-| 4             | `\x04` | Reset into USB bootloader       |
-
-
-### Setting Motor Speeds
-
-The value of a motor can be set by sending the appropriate command, and then a second byte as follows:
-
-The argument byte is a standard 8-bit signed number, where a few values are reserved for the special cases of no-op, coast and brake.
-
-| Decimal Value | Purpose         |
-|---------------|-----------------|
-| 0             | No-op           |
-| 1             | Coast the motor |
-| 2             | Brake the motor |
-
-### Firmware String
-
-When the firmware string is requested from the motor board, you will receive bytes of the following format over the serial interface: `MCV4B:3\n`.
-
-The number after the colon represents the firmware version of the board.
+Action | Description | Command | Parameter Description | Return | Return Parameters
+--- | --- | --- | --- | --- | ---
+Identify | Get the board type and version | *IDN? | - | Student Robotics:MBv4B:\<asset tag>:\<software version> | \<asset tag> <br>\<software version>
+Status | Get board status | *STATUS? | - | \<output faults>:\<input voltage> | \<output faults> - a comma separated list of 1/0s indicating if an output driver has reported a fault  e.g. 1,0<br>\<input voltage> - voltage at 12V input in mV
+Reset | Reset board to safe startup state<br>- Turn off all outputs<br>- Reset the lights | *RESET | - | ACK | -
+Set motor power | Sets the speed of one of the motors | MOT:\<n>:SET:\<value> | \<n> motor number, int, 0-1<br>\<value> motor power, int, -1000 to 1000 | ACK | -
+Read motor power | Gets the current speed setting of the motor | MOT:\<n>:GET? | \<n> motor number, int, 0-1 | \<enabled>:\<value> | \<enabled> motor enabled, int, 0-1 <br>\<value> motor power, int, -1000 to 1000"
+Disable motor output | Puts the motor into high impedance (equivalent to current coast) | MOT:\<n>:DISABLE | \<n> motor number, int, 0-1 | ACK | -
+Read motor current | Read the current power draw of the motor | MOT:\<n>:I? | \<n> motor number, int, 0-1 | \<current> | \<current> - current, int, measured in mA
+Enter bootloader | Enter the serial bootloader to load new firmware | *SYS:BOOTLOADER | - | ACK | -
 
 ## udev Rule
+
+On most systems this should not be required as serial ports will already below to a non-root group, i.e. plugdev.
 
 If you are connecting the Motor Board to a Linux computer with udev, the following rule can be added in order to access
 the Motor Board interface without root privileges:
@@ -103,7 +72,9 @@ the Motor Board interface without root privileges:
 
 It should be noted that `plugdev` can be changed to any Unix group of your preference.
 
-[cygwin]:     http://cygwin.com/
-[toolchain]:  https://launchpad.net/gcc-arm-embedded
-[stm32flash]: http://stm32flash.googlecode.com
-[git]:        http://git-scm.com
+## Designs
+
+You can access the schematics and source code of the hardware in the following places.
+-   [Full Schematics](https://studentrobotics.org/docs/resources/kit/motor-schematic.pdf)
+-   [Competitor Facing Docs](https://studentrobotics.org/docs/kit/motor_board)
+-   [Hardware designs](https://github.com/srobo/motor-v4-hw)

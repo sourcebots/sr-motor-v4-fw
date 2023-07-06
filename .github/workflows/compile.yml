@@ -1,0 +1,32 @@
+name: Build binaries
+
+on:
+  - push
+  - workflow_dispatch
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Setup arm-none-eabi-gcc
+      uses: carlosperate/arm-none-eabi-gcc-action@v1
+      with:
+        release: 11.2-2022.02
+    - name: Build libopencm3
+      run: make lib
+    - name: Make main binary
+      run: make -C src
+    - name: Consolidate binaries
+      run: |
+        mkdir dist
+        cp src/main.elf dist/
+        cp src/main.bin dist/
+    - name: Archive produced binaries
+      uses: actions/upload-artifact@v3
+      with:
+        name: mcv4-binaries
+        path: dist/*

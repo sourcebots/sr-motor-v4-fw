@@ -1,67 +1,95 @@
-FW_VER=3
+##
+## This file is part of the libopencm3 project.
+##
+## Copyright (C) 2009 Uwe Hermann <uwe@hermann-uwe.de>
+##
+## This library is free software: you can redistribute it and/or modify
+## it under the terms of the GNU Lesser General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This library is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU Lesser General Public License for more details.
+##
+## You should have received a copy of the GNU Lesser General Public License
+## along with this library.  If not, see <http://www.gnu.org/licenses/>.
+##
 
-TOOLCHAIN_DIR = ./libopencm3
-PREFIX = arm-none-eabi
-CC = $(PREFIX)-gcc
-LD = $(PREFIX)-gcc
-SIZE = $(PREFIX)-size
-GDB = $(PREFIX)-gdb
-OBJCOPY = $(PREFIX)-objcopy
-OOCD = openocd
+PREFIX		?= arm-none-eabi-
 
-LDSCRIPT = stm32-mcv4.ld
-OOCD_BOARD = oocd/mcv4.cfg
+TARGETS		:= src
 
-CFLAGS += -mcpu=cortex-m3 -mthumb -msoft-float -DSTM32F1 \
-	  -Wall -Wextra -O0 -std=gnu99 -g -fno-common \
-	  -I$(TOOLCHAIN_DIR)/include -DFW_VER=$(FW_VER)
-LDFLAGS += -lc -lm -L$(TOOLCHAIN_DIR)/lib/thumb/cortex-m3 -L$(TOOLCHAIN_DIR)/lib \
-	   -L$(TOOLCHAIN_DIR)/lib/stm32/f1 -lnosys -T$(LDSCRIPT) \
-	   -nostartfiles -Wl,--gc-sections,-Map=mcv4.map -mcpu=cortex-m3 \
-	   -mthumb -march=armv7-m -mfix-cortex-m3-ldrd -msoft-float
+# Be silent per default, but 'make V=1' will show all compiler calls.
+ifneq ($(V),1)
+Q := @
+# Do not print "Entering directory ...".
+MAKEFLAGS += --no-print-directory
+endif
 
-O_FILES = main.o led.o output.o usart.o analogue.o fw_ver.o
-TEST_O_FILES = test.o led.o output.o
+OPENCM3_DIR ?= $(realpath libopencm3)
+EXAMPLE_RULES = bin
 
-all: mcv4.bin mcv4_test.bin
+all: build
 
-test: mcv4_test.bin
+bin: EXAMPLE_RULES += bin
+hex: EXAMPLE_RULES += hex
+srec: EXAMPLE_RULES += srec
+list: EXAMPLE_RULES += list
+images: EXAMPLE_RULES += images
 
-include depend
+bin: build
+hex: build
+srec: build
+list: build
+images: build
 
-mcv4.elf: $(O_FILES) $(LD_SCRIPT) $(TOOLCHAIN_DIR)/lib/libopencm3_stm32f1.a
-	$(LD) -o $@ $(O_FILES) $(LDFLAGS) -lopencm3_stm32f1
-	$(SIZE) $@
+build: lib examples
 
-mcv4_test.elf: $(TEST_O_FILES) $(LD_SCRIPT) $(TOOLCHAIN_DIR)/lib/libopencm3_stm32f1.a
-	$(LD) -o $@ $(TEST_O_FILES) $(LDFLAGS) -lopencm3_stm32f1
-	$(SIZE) $@
+lib:
+	$(Q)if [ ! "`ls -A $(OPENCM3_DIR)`" ] ; then \
+		printf "######## ERROR ########\n"; \
+		printf "\tlibopencm3 is not initialized.\n"; \
+		printf "\tPlease run:\n"; \
+		printf "\t$$ git submodule init\n"; \
+		printf "\t$$ git submodule update\n"; \
+		printf "\tbefore running make.\n"; \
+		printf "######## ERROR ########\n"; \
+		exit 1; \
+		fi
+	$(Q)$(MAKE) -C $(OPENCM3_DIR)
 
-%.bin: %.elf
-	$(OBJCOPY) -O binary $< $@
+EXAMPLE_DIRS:=$(sort $(dir $(wildcard $(addsuffix /Makefile,$(TARGETS)))))
+$(EXAMPLE_DIRS): lib
+	@printf "  BUILD   $@\n";
+	$(Q)$(MAKE) --directory=$@ OPENCM3_DIR=$(OPENCM3_DIR) $(EXAMPLE_RULES)
 
-depend: *.c
-	rm -f depend
-	for file in $^; do \
-		$(CC) $(CFLAGS) -MM $$file -o - >> $@ ; \
-	done ;
+examples: $(EXAMPLE_DIRS)
+	$(Q)true
 
-.PHONY: all test clean flash
+examplesclean: $(EXAMPLE_DIRS:=.clean)
 
-flash: mcv4.elf
-	$(OOCD) -f "$(OOCD_BOARD)" \
-	        -c "init" \
-	        -c "reset init" \
-	        -c "stm32f1x mass_erase 0" \
-	        -c "flash write_image $<" \
-	        -c "reset" \
-	        -c "shutdown"
+clean: examplesclean styleclean
+	$(Q)$(MAKE) -C libopencm3 clean
 
-debug: mcv4.elf
-	$(OOCD) -f "$(OOCD_BOARD)" \
-	        -c "init" \
-	      #  -c "reset halt" &
-	$(GDB)  mcv4.elf
+stylecheck: $(EXAMPLE_DIRS:=.stylecheck)
+styleclean: $(EXAMPLE_DIRS:=.styleclean)
 
-clean:
-	-rm -f mcv4.elf depend *.o
+
+%.clean:
+	$(Q)if [ -d $* ]; then \
+		printf "  CLEAN   $*\n"; \
+		$(MAKE) -C $* clean OPENCM3_DIR=$(OPENCM3_DIR) || exit $?; \
+	fi;
+
+%.styleclean:
+	$(Q)$(MAKE) -C $* styleclean OPENCM3_DIR=$(OPENCM3_DIR)
+
+%.stylecheck:
+	$(Q)$(MAKE) -C $* stylecheck OPENCM3_DIR=$(OPENCM3_DIR)
+
+
+.PHONY: build lib examples $(EXAMPLE_DIRS) install clean stylecheck styleclean \
+        bin hex srec list images
+
