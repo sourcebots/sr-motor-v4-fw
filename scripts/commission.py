@@ -66,7 +66,7 @@ def serial_flash_firmware(port, firmware, detect_asset=False):
     if detect_asset:
         asset_code = find_asset(port)
     else:
-        asset_code = input("Enter asset code to bake into the firmware and USB descriptor: ")
+        asset_code = input("Enter asset code to bake into the firmware and USB descriptor (will have sr prepended): ")
         asset_code = 'sr' + asset_code.upper()
     print(f"Programming asset code: {asset_code}")
 

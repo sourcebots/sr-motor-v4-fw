@@ -23,7 +23,6 @@ $ make -C src prog
 To use the `prog` command you need to install stm32flash. This is a cross-platform utility that may be in your operating system's package manager, otherwise it can be downloaded from [their website](https://sourceforge.net/p/stm32flash/wiki/Home/).
 
 To enter the bootloader the pushbutton on the board can be pressed with the 12V input connected. Whilst 12V power is present the board will remain in bootloader.
-Alternatively the bootloader can be entered using the corresponding command.
 
 ### Finding the board
 
