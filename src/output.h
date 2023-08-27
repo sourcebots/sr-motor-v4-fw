@@ -9,7 +9,7 @@
 
 typedef struct {
     bool enabled;
-    int8_t value;
+    int16_t value;
     bool in_fault;
     uint16_t current;
 } output_t;
@@ -20,7 +20,7 @@ void output_init(void);
 
 void output_set_power(uint8_t output_num, int16_t output_val);
 bool output_enabled(uint8_t output_num);
-int8_t output_get_output(uint8_t output_num);
+int16_t output_get_output(uint8_t output_num);
 void output_disable(uint8_t output_num);
 uint16_t output_get_current(uint8_t output_num);
 void check_output_faults(void);

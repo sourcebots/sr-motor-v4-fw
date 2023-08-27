@@ -129,7 +129,7 @@ bool output_enabled(uint8_t output_num) {
     return output_data[output_num].enabled;
 }
 
-int8_t output_get_output(uint8_t output_num) {
+int16_t output_get_output(uint8_t output_num) {
     if (!(output_num < NUM_OUTPUTS)) {
         // skip invalid output numbers
         return 0;
