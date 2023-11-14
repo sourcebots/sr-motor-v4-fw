@@ -106,6 +106,12 @@ SECTIONS
 	 */
 	/DISCARD/ : { *(.eh_frame) }
 
+	/* Finally, put the serial nmumber in a known location */
+	.text : {
+		. = ORIGIN(rom) + 0x1FE0;
+		*(.sernum*)
+	} >rom
+
 	. = ALIGN(4);
 	end = .;
 }

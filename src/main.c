@@ -13,7 +13,6 @@
 #include "analogue.h"
 #include "msg_handler.h"
 
-
 static void init(void) {
     rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_24MHZ]);
 

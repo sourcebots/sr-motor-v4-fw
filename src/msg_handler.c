@@ -13,7 +13,7 @@
 #define MSG_MAXLEN 64
 #define USB_BUFFER_SIZE 64
 
-const char serialnum[] = "XXXXXXXXXXXXXXX";
+const char serialnum[] __attribute__((section(".sernum"))) = "XXXXXXXXXXXXXXX";
 char msg_buffer[MSG_MAXLEN];
 int current_msg_len = 0;
 
